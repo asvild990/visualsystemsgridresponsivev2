@@ -1,78 +1,120 @@
-
 let fonts = [];
 let fontNames = [
-  "Georgia", "Courier New", "Verdana", "Arial", "Times New Roman",
-  "Trebuchet MS", "Lucida Console", "Impact", "Comic Sans MS", "Palatino Linotype"
+  "Futura", "Didot", "Verdana", "Baskerville", "Avenir",
+  "Gill Sans", "Source Code Pro", "Cooper", "Helvetica", "Rockwell"
 ];
 
-let message = "Visual Systems";
-let cols = Math.floor(windowWidth / 40);
-let rows = Math.floor(windowHeight / 40);
-let fontIndex = [];
-let freezeMap = [];
+let message = "Visual\nSystems";
+let cols, rows;
 let cellW, cellH;
+let fontGrid = [];
+let freezeGrid = [];
+let rippleTimer = 0;
+let rippleSpeed = 1800; // 1.8 seconds
+let fontCache = {};
 
 function preload() {
-  for (let name of fontNames) {
-    fonts.push(loadFont("https://fonts.gstatic.com/s/" + name.replace(/ /g, '').toLowerCase() + "/v1.ttf"));
-  }
+  textFont('sans-serif');
+  fontNames.forEach(name => {
+    fonts.push(name); // Font faces must be available via CSS or Google Fonts in index.html
+  });
 }
 
 function setup() {
   createCanvas(windowWidth, windowHeight);
-  initGrid();
   frameRate(30);
+  updateGridDimensions();
+  initializeFontGrid();
 }
 
 function windowResized() {
   resizeCanvas(windowWidth, windowHeight);
-  initGrid();
+  updateGridDimensions();
+  initializeFontGrid();
 }
 
-function initGrid() {
-  fontIndex = Array.from({ length: cols }, () => Array(rows).fill(0));
-  freezeMap = Array.from({ length: cols }, () => Array(rows).fill(false));
+function updateGridDimensions() {
+  cols = floor(width / 40);
+  rows = floor(height / 40);
   cellW = width / cols;
   cellH = height / rows;
+}
+
+function initializeFontGrid() {
+  fontGrid = [];
+  freezeGrid = [];
+  for (let i = 0; i < cols; i++) {
+    fontGrid[i] = [];
+    freezeGrid[i] = [];
+    for (let j = 0; j < rows; j++) {
+      fontGrid[i][j] = floor(random(fonts.length));
+      freezeGrid[i][j] = false;
+    }
+  }
 }
 
 function draw() {
   background('#F3F3F3');
   textAlign(CENTER, CENTER);
-  textSize(min(width, height) * 0.075); // scale to ~75% of canvas
-  fill(0);
-  stroke('#FFFFFF');
-  strokeWeight(0.25);
+  textSize(min(width, height) * 0.75); // scale up text
+  noStroke();
+
+  let pg = createGraphics(width, height);
+  pg.background(0, 0);
+  pg.fill(0);
+  pg.textAlign(CENTER, CENTER);
+  pg.textSize(min(width, height) * 0.75);
+  pg.textLeading(min(width, height) * 0.75 * 0.9); // tighter leading
+  pg.text(message, width / 2, height / 2);
 
   for (let i = 0; i < cols; i++) {
     for (let j = 0; j < rows; j++) {
-      push();
       let x = i * cellW;
       let y = j * cellH;
-      let diagOffset = i + j;
-      if (!freezeMap[i][j] && frameCount % int(54 + diagOffset * 0.2) === 0) {
-        fontIndex[i][j] = int(random(fonts.length));
-      }
-      textFont(fonts[fontIndex[i][j]]);
-      text(message, width / 2 - cellW / 2, height / 2 - cellH / 2);
-      let graphic = get(x, y, cellW, cellH);
-      image(graphic, x, y, cellW, cellH);
+      let idx = fontGrid[i][j];
+      let font = fonts[idx];
+
+      pg.textFont(font);
+      let clipped = pg.get(x, y, cellW, cellH);
+
+      image(clipped, x, y, cellW, cellH);
+
+      stroke('#FFFFFF');
+      strokeWeight(0.5);
       noFill();
       rect(x, y, cellW, cellH);
-      pop();
+    }
+  }
+
+  if (millis() - rippleTimer > rippleSpeed) {
+    rippleTimer = millis();
+    updateFontsInRipple();
+  }
+}
+
+function updateFontsInRipple() {
+  let t = millis() * 0.001;
+  for (let i = 0; i < cols; i++) {
+    for (let j = 0; j < rows; j++) {
+      if (!freezeGrid[i][j]) {
+        let delay = (i + j) * 30;
+        if ((millis() - rippleTimer) > delay) {
+          fontGrid[i][j] = floor(random(fonts.length));
+        }
+      }
     }
   }
 }
 
 function mousePressed() {
-  let i = int(mouseX / cellW);
-  let j = int(mouseY / cellH);
-  for (let di = -2; di <= 2; di++) {
-    for (let dj = -2; dj <= 2; dj++) {
-      let ni = i + di;
-      let nj = j + dj;
+  let i = floor(mouseX / cellW);
+  let j = floor(mouseY / cellH);
+  for (let dx = -1; dx <= 1; dx++) {
+    for (let dy = -1; dy <= 1; dy++) {
+      let ni = i + dx;
+      let nj = j + dy;
       if (ni >= 0 && ni < cols && nj >= 0 && nj < rows) {
-        freezeMap[ni][nj] = true;
+        freezeGrid[ni][nj] = true;
       }
     }
   }
