@@ -1,6 +1,6 @@
 let message = "Visual\nSystems";
-let cols = 20;
-let rows = 20;
+let cols = 60;
+let rows = 40;
 let freeze = [];
 let fontGrid = [];
 let cellW, cellH;
